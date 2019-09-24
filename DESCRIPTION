@@ -1,0 +1,18 @@
+Package: twitterfeatures
+Type: Package
+Title: Simple Feature Engineering Functions for Twitter Data.
+Version: 0.1.0
+Authors@R: c(person("Sebastian", "Fox", , "sebastian.fox@phe.gov.uk", c("aut", "cre")))
+Maintainer: Sebastian Fox <sebastian.fox@phe.gov.uk>
+Description: When attempting machine learning on Twitter data a typical task is to 
+    create features that can be used to train and test models on. This package 
+    standardises methods of creating those features.
+Imports:
+    dplyr,
+    textdata,
+    tidyr,
+    tidytext
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
