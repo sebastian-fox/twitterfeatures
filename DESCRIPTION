@@ -1,7 +1,8 @@
 Package: twitterfeatures
 Type: Package
-Title: Simple Feature Engineering Functions for Twitter Data.
+Title: Simple Feature Engineering Functions for Twitter Data
 Version: 0.1.0
+Depends: R (>= 3.4.0)
 Authors@R: c(person("Sebastian", "Fox", , "sebastian.fox@phe.gov.uk", c("aut", "cre")))
 Maintainer: Sebastian Fox <sebastian.fox@phe.gov.uk>
 Description: When attempting machine learning on Twitter data a typical task is to 
@@ -9,8 +10,13 @@ Description: When attempting machine learning on Twitter data a typical task is 
     standardises methods of creating those features.
 Imports:
     dplyr,
+    qdapRegex,
+    rlang,
+    stopwords,
+    stringi,
+    stringr,
     textdata,
-    tidyr,
+    tidyr (>= 1.0.0),
     tidytext
 License: MIT
 Encoding: UTF-8

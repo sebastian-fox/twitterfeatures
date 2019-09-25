@@ -2,38 +2,45 @@
 #'
 #' Engineers features related to hashtags in Tweets.
 #'
-#' @return A data frame of document id fields and their associated hashtag
-#'   features
-#' @details Hashtags are first converted to lowercase before the features are calculated.
+#' @return A data frame of document ids their associated hashtag features
+#' @details Hashtags are first converted to lowercase before the features are
+#'   calculated.
 #'
-#' The hashtag features are calculated as a proportion of the total number of words in the Tweet:
-#' \itemize{
-#'  \item{the count of positive/negative sentiment based on the NRC lexicon}
-#'  \item{the count of positive/negative sentiment once all NRC lexicon sentiments are grouped}
-#'  \item{the count of the top n hashtags used in the training data}
-#' }
+#'   The hashtag features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the count of positive/negative sentiment based on the NRC lexicon}
+#'     \item{the count of positive/negative sentiment once all NRC lexicon
+#'     sentiments are grouped}
+#'     \item{the count of the top n hashtags used in the training data}
+#'   }
 #'
 #' @param data a dataframe or tibble containing the text data and document id
 #' @param doc_id_field unquoted field name identifying the field within the data
 #'   that represents the unique document id
 #' @param text_field unquoted field name identifying the field name in data that
 #'   contains the text of the Tweet
-#' @param top_n integer, the top n hashtags to create features from
-#' @param min_n integer, the minimum number of occurrences a hashtag must appear in the data
+#' @param top_num integer, the top n hashtags to create features from
+#' @param min_n integer, the minimum number of occurrences a hashtag must appear
+#'   in the data
 #' @examples
 #' tweets <- data.frame(status_id = c(1234, 5678),
 #'                      text = c("I tweet about one thing #onething #things",
-#'                               "I tweet about another thing #another thing #things"))
-#' feature_hashtag(tweets, status_id, text)
+#'                               "I tweet about another thing #another
+#'                               thing #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_hashtags(tweets, status_id, text)
 #' @import dplyr
 #' @importFrom tidytext unnest_tokens
 #' @importFrom textdata lexicon_nrc
 #' @importFrom tidyr pivot_wider
 #' @export
-feature_hashtags <- function(data, doc_id_field, text_field, top_n = 100L, min_n = 2L) {
+feature_hashtags <- function(data, doc_id_field, text_field, top_num = 100L, min_n = 2L) {
   out <- data %>%
     unnest_tokens(word, {{ text_field }},
-                  to_lower = FALSE, token = "tweets") %>%
+                  to_lower = FALSE, token = "tweets",
+                  strip_punct = TRUE) %>%
     group_by({{ doc_id_field }}) %>%
     mutate(total_words_in_tweet = n(),
            word = tolower(word)) %>%
@@ -76,7 +83,7 @@ feature_hashtags <- function(data, doc_id_field, text_field, top_n = 100L, min_n
   top_hashtags <- out %>%
     select(word, n) %>%
     unique() %>%
-    top_n(top_n, wt = n) %>%
+    top_n(top_num, wt = n) %>%
     select(word)
   out <- out %>%
     inner_join(top_hashtags, by = "word") %>%
@@ -95,6 +102,38 @@ feature_hashtags <- function(data, doc_id_field, text_field, top_n = 100L, min_n
   return(data)
 }
 
+
+#' Sentiment features
+#'
+#' Engineers features related to sentiment in Tweets.
+#'
+#' @return A data frame of document ids and their associated sentiment
+#'   features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated.
+#'
+#'   The sentiment features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the count of sentiment grouping by sentiment lexicon}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param sentiments character, can be one or multiple of nrc, Bing-Liu or MPQA
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I love to tweet about one thing #onething #things",
+#'                               "I have doubts about tweeting about another thing
+#'                               #another thing #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_sentiment(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom textdata lexicon_nrc lexicon_bing
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @export
 feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nrc", "Bing-Liu", "MPQA")) {
   if (any(!(sentiments %in% c("nrc", "Bing-Liu", "MPQA")))) stop("sentiments must be at least one of nrc, Bing-Liu or MPQA")
 
@@ -118,7 +157,8 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
       inner_join(lexicon_nrc(), by = "word") %>%
       left_join(nrc_groupings, by = "sentiment") %>%
       count({{ doc_id_field }}, total_words_in_tweet, grouping) %>%
-      spread(grouping, n, fill = 0) %>%
+      pivot_wider(names_from = grouping, values_from = n,
+                  values_fill = 0) %>%
       mutate(nrc_pos_word_group = pos_group / total_words_in_tweet,
              nrc_neg_word_group = neg_group / total_words_in_tweet) %>%
       select({{ doc_id_field }}, nrc_pos_word_group, nrc_neg_word_group)
@@ -130,7 +170,8 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
     bing_pos_neg_group <- out %>%
       inner_join(lexicon_bing(), by = "word") %>%
       count({{ doc_id_field }}, total_words_in_tweet, sentiment) %>%
-      spread(sentiment, n, fill = 0) %>%
+      pivot_wider(names_from = sentiment, values_from = n,
+                  values_fill = 0) %>%
       mutate(bingliu_pos_word = positive / total_words_in_tweet,
              bingliu_neg_word = negative / total_words_in_tweet) %>%
       select({{ doc_id_field }}, bingliu_pos_word, bingliu_neg_word)
@@ -140,11 +181,12 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
 
   if ("MPQA" %in% sentiments) {
     # downloaded from https://mpqa.cs.pitt.edu/lexicons/
-    mpqa_groupings <- read.csv("./ppt/mpqa_lexicon.csv", stringsAsFactors = FALSE)
+    # mpqa_groupings <- twitterfeatures:::mpqa_groupings
     mpqa_pos_neg_group <- out %>%
       inner_join(mpqa_groupings, by = "word") %>%
       count({{ doc_id_field }}, total_words_in_tweet, grouping) %>%
-      spread(grouping, n, fill = 0) %>%
+      pivot_wider(names_from = grouping, values_from = n,
+                  values_fill = 0) %>%
       mutate(mpqa_pos_word_group = positive / total_words_in_tweet,
              mpqa_neg_word_group = negative / total_words_in_tweet) %>%
       select({{ doc_id_field }}, mpqa_pos_word_group, mpqa_neg_word_group)
@@ -156,7 +198,35 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
   return(doc_ids)
 }
 
-library(stringr)
+#' Quantitative features
+#'
+#' Engineers quantitative features in Tweets.
+#'
+#' @return A data frame of document ids and their associated quantitative
+#'   features
+#' @details The quantitative features are
+#'
+#'   \itemize{
+#'     \item{the count of characters}
+#'     \item{the number of words}
+#'     \item{the average word length}
+#'     \item{the number of sentences}
+#'     \item{the average number of words in a sentence}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I love to tweet about one thing #onething #things",
+#'                               "I have doubts about tweeting about another thing
+#'                               #another thing #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_quantitative(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom rlang quo_text
+#' @importFrom stringr str_count
+#' @export
 feature_quantitative <- function(data, doc_id_field, text_field) {
   characters <- data %>%
     mutate(num_characters = nchar({{ text_field }})) %>%
@@ -183,8 +253,38 @@ feature_quantitative <- function(data, doc_id_field, text_field) {
     return()
 }
 
-library(stringi)
-feature_emoji <- function(data, doc_id_field, text_field, top_n = 20) {
+#' Emoji features
+#'
+#' Engineers features related to emojis in Tweets.
+#'
+#' @return A data frame of document ids their associated emoji features
+#' @details The full list of emojis are initially downloaded from
+#'   https://unicode.org/Public/emoji/12.0/emoji-test.txt so an internet connection
+#'   is required.
+#'
+#'   The emoji features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the count of the top n emojis in the data}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param top_num integer, the top n emojis to create features from
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another thing #another thing #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_emoji(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom stringr str_squish str_replace str_extract_all
+#' @importFrom stringi stri_escape_unicode
+#' @importFrom tidyr pivot_wider unnest
+#' @importFrom rlang quo_name
+#' @export
+feature_emoji <- function(data, doc_id_field, text_field, top_num = 20) {
   emojis <- data.frame(emoji = readLines("https://unicode.org/Public/emoji/12.0/emoji-test.txt"), stringsAsFactors = FALSE) %>%
     filter(!grepl("^#", emoji),
            emoji != "") %>%
@@ -203,7 +303,7 @@ feature_emoji <- function(data, doc_id_field, text_field, top_n = 20) {
   top_n_emojis <- emoji_count %>%
     group_by(emoji) %>%
     summarise(total_used = sum(n)) %>%
-    top_n(top_n, wt = total_used)
+    top_n(top_num, wt = total_used)
 
   word_count <- data %>%
     unnest_tokens(word, !!text_field,
@@ -219,7 +319,8 @@ feature_emoji <- function(data, doc_id_field, text_field, top_n = 20) {
     mutate(emoji = paste0("u", emoji)) %>%
     group_by({{ doc_id_field }}, emoji) %>%
     summarise(emoji_per_word = sum(emoji_per_word)) %>%
-    spread(emoji, emoji_per_word, fill = 0)
+    pivot_wider(names_from = emoji, values_from = emoji_per_word,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -229,6 +330,33 @@ feature_emoji <- function(data, doc_id_field, text_field, top_n = 20) {
   return(data)
 }
 
+#' Orthographic features
+#'
+#' Engineers orthographic features in Tweets.
+#'
+#' @return A data frame of document ids their associated orthographic features
+#' @details As part of the pre-processing to calculate these features, usernames
+#'   containing @@ are removed, as are hashtags.
+#'
+#'   The orthographic features are calculated as a proportion of the total number of
+#'   characters in the Tweet prior to the pre-processing steps above:
+#'
+#'   \itemize{
+#'     \item{the count of each of the punctuation characters}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing! #onething #things",
+#'                               "I tweet about another thing!?%$ #another thing #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_orthographic(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider unnest
+#' @importFrom rlang quo_text
+#' @export
 feature_orthographic <- function(data, doc_id_field, text_field) {
   out <- data %>%
     mutate(num_characters = nchar({{ text_field }}),
@@ -243,7 +371,8 @@ feature_orthographic <- function(data, doc_id_field, text_field) {
     mutate(punct_per_character = n / num_characters,
            character = paste("punc", character, sep = "_")) %>%
     select(-n, -num_characters) %>%
-    spread(character, punct_per_character)
+    pivot_wider(names_from = character, values_from = punct_per_character,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -254,7 +383,40 @@ feature_orthographic <- function(data, doc_id_field, text_field) {
 
 }
 
-feature_longwords <- function(data, doc_id_field, text_field, remove_urls = TRUE) {
+#' Long word features
+#'
+#' Engineers features related to long words in Tweets.
+#'
+#' @return A data frame of document ids their associated long word features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated. Twitter URLs (if remove_urls = TRUE), hashtags and
+#'   @@usernames are also removed.
+#'
+#'   The long word features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the count of words that have 3 or more identical consecutive characters}
+#'     \item{the count of the top_num words that are over 10 letters long}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param top_num integer, the top n long words to create features from
+#' @param remove_urls logical; should urls be removed prior to identifying long words
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweeet about one thing #onething #things",
+#'                               "I tweeet about otherthings #otherthings
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_longwords(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom qdapRegex rm_twitter_url
+#' @importFrom rlang quo_name
+#' @export
+feature_longwords <- function(data, doc_id_field, text_field, top_num = 10, remove_urls = TRUE) {
   if (remove_urls) {
     data <- data %>%
       mutate_at(.vars = quo_name(enquo(text_field)),
@@ -290,7 +452,7 @@ feature_longwords <- function(data, doc_id_field, text_field, remove_urls = TRUE
     filter(over10 == TRUE) %>%
     select(word, number_repeats) %>%
     unique() %>%
-    top_n(10, number_repeats)
+    top_n(top_num, number_repeats)
 
   long_words <- data_temp %>%
     filter(word %in% top10$word) %>%
@@ -298,7 +460,8 @@ feature_longwords <- function(data, doc_id_field, text_field, remove_urls = TRUE
     mutate(prop_word_in_tweet = n / total_words_in_tweet,
            word = paste0("long_", word)) %>%
     select(-c("total_words_in_tweet", "n")) %>%
-    spread(word, prop_word_in_tweet, fill = 0)
+    pivot_wider(names_from = word, values_from = prop_word_in_tweet,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -309,8 +472,37 @@ feature_longwords <- function(data, doc_id_field, text_field, remove_urls = TRUE
   return(data)
 }
 
-library(quanteda)
-feature_stopwords <- function(data, doc_id_field, text_field) {
+#' Stop word features
+#'
+#' Engineers features related to stop words in Tweets.
+#'
+#' @return A data frame of document ids their associated stop word features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated.
+#'
+#'   The stop word features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the count of the top_num stop words in all Tweets}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param top_num integer, the top n stop words to create features from
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another #anotherthing
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_stopwords(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @importFrom stopwords stopwords
+#' @export
+feature_stopwords <- function(data, doc_id_field, text_field, top_num = 10) {
   data_temp <- data %>%
     unnest_tokens(word, {{ text_field }}, token = "tweets",
                   to_lower = FALSE, strip_punct = TRUE) %>%
@@ -322,7 +514,7 @@ feature_stopwords <- function(data, doc_id_field, text_field) {
     ungroup()
   top10 <- data_temp %>%
     count(word) %>%
-    top_n(10, n) %>%
+    top_n(top_num, n) %>%
     pull(word)
   data_temp <- data_temp %>%
     filter(word %in% top10) %>%
@@ -331,7 +523,8 @@ feature_stopwords <- function(data, doc_id_field, text_field) {
            stopword_proportion = n / total_words_in_tweet,
            word = paste0("stopword_", word)) %>%
     select(-c("total_words_in_tweet", "num_stopwords", "n")) %>%
-    spread(word, stopword_proportion)
+    pivot_wider(names_from = word, values_from = stopword_proportion,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -342,12 +535,71 @@ feature_stopwords <- function(data, doc_id_field, text_field) {
 
 }
 
-feature_onomatopoeia <- function(data, doc_id_field, text_field) {
+#' Onomatopoeiaic features
+#'
+#' Engineers features related to onomatopoeiaic words in Tweets.
+#'
+#' @return A data frame of document ids their associated onomatopoeiaic word features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated.
+#'
+#'   The onomatopoeiaic word features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the count of the top_num onomatopoeiaic words in all Tweets}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param top_num integer, the top n onomatopoeiaic words to create features from
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another #anotherthing
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_onomatopoeia(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @export
+feature_onomatopoeia <- function(data, doc_id_field, text_field, top_num = 10) {
   #http://www.writtensound.com/index.php?term=c
 }
 
-library(lexicon)
-feature_slang <- function(data, doc_id_field, text_field) {
+#' Slang features
+#'
+#' Engineers features related to slang words in Tweets.
+#'
+#' @return A data frame of document ids their associated slang word features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated. Slang words are taken from the \code{hash_internet_slang} dataset
+#'   from the \code{lexicon} package.
+#'
+#'   The slang word features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the total number of slang words in a Tweet}
+#'     \item{the count of each of the top_num slang words in all Tweets}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param top_num integer, the top n onomatopoeiaic words to create features from
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another #anotherthing
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_slang(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @export
+feature_slang <- function(data, doc_id_field, text_field, top_num = 10) {
   data_temp <- data %>%
     unnest_tokens(word, {{ text_field }}, token = "tweets",
                   to_lower = FALSE, strip_punct = TRUE) %>%
@@ -359,7 +611,7 @@ feature_slang <- function(data, doc_id_field, text_field) {
     ungroup()
   top10 <- data_temp %>%
     count(word) %>%
-    top_n(10, n) %>%
+    top_n(top_num, n) %>%
     pull(word)
   data_temp <- data_temp %>%
     filter(word %in% top10) %>%
@@ -368,7 +620,8 @@ feature_slang <- function(data, doc_id_field, text_field) {
            slang_proportion = n / total_words_in_tweet,
            word = paste0("slang_", word)) %>%
     select(-c("total_words_in_tweet", "num_slang", "n")) %>%
-    spread(word, slang_proportion)
+    pivot_wider(names_from = word, values_from = slang_proportion,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -379,16 +632,77 @@ feature_slang <- function(data, doc_id_field, text_field) {
 
 }
 
+#' Part-of-Speech features
+#'
+#' Engineers features related to Part-of-Speech words in Tweets.
+#'
+#' @return A data frame of document ids their associated Part-of-Speech word features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated.
+#'
+#'   The Part-of-Speech word features are calculated as a proportion of the total number of
+#'   words in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the number of words in each Part-of-Speech grouping}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another #anotherthing
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_PoS(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @export
 feature_PoS <- function(data, doc_id_field, text_field) {
 
 }
 
-feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ngrams = 1, top_num = 1000) {
+#' ngram features
+#'
+#' Engineers features related to ngrams (both word or character) in Tweets.
+#'
+#' @return A data frame of document ids their associated ngrams features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated.
+#'
+#'   The ngram features are calculated as a proportion of the total number of
+#'   ngrams in the Tweet:
+#'
+#'   \itemize{
+#'     \item{the number of the top_num ngrams in all Tweets}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param type string; either ngrams of character_shingles
+#' @param n_ngrams ingeger; the number in the ngram
+#' @param top_num integer, the top n ngrams to create features from
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another #anotherthing
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_ngrams(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @importFrom stringi stri_escape_unicode
+#' @export
+feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ngrams = 1L, top_num = 1000L) {
   if (!type %in% c("ngrams", "character_shingles")) stop("type must be either ngram or character_shingles")
   data_temp <- data %>%
-    unnest_tokens(ngram, text, token = type, n = n_ngrams) %>%
+    unnest_tokens(ngram, {{ text_field }}, token = type, n = n_ngrams) %>%
     group_by({{ doc_id_field }}) %>%
-    mutate(ngrams_in_tweet = n()) %>%
+    mutate(ngrams_in_tweet = n(),
+           ngram = tolower(ngram)) %>%
     ungroup()
   topnum <- data_temp %>%
     count(ngram) %>%
@@ -407,7 +721,8 @@ feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ng
              ngram = gsub("\\\\", "\\", ngram))
   }
   data_temp <- data_temp %>%
-    spread(ngram, ngram_proportion)
+    pivot_wider(names_from = ngram, values_from = ngram_proportion,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -417,15 +732,49 @@ feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ng
   return(data)
 }
 
+#' Skip ngram features
+#'
+#' Engineers features related to skip word ngrams in Tweets.
+#'
+#' @return A data frame of document ids their associated skip ngrams features
+#' @details Tweets are first converted to lowercase before the features are
+#'   calculated.
+#'
+#'   The ngram features are calculated as a proportion of the total number of
+#'   skip ngrams in the Tweet that contain the same number of words:
+#'
+#'   \itemize{
+#'     \item{the number of the top_num skip ngrams of all lengths in all Tweets}
+#'   }
+#'
+#' @inheritParams feature_hashtags
+#' @param n_ngrams_min integer; the minimum number in the ngram
+#' @param n_ngrams_max integer; the maximum number in the ngram
+#' @param n_skip_words integer; the maximum number of words to skip when calculating
+#'   ngrams
+#' @param top_num integer, the top n skip ngrams to create features from
+#' @examples
+#' tweets <- data.frame(status_id = c(1234, 5678),
+#'                      text = c("I tweet about one thing #onething #things",
+#'                               "I tweet about another #anotherthing
+#'                                #things"),
+#'                      stringsAsFactors = FALSE)
+#' feature_skip_ngrams(tweets, status_id, text)
+#' @import dplyr
+#' @importFrom tidytext unnest_tokens
+#' @importFrom tidyr pivot_wider
+#' @importFrom rlang quo_text
+#' @export
 feature_skip_ngrams <- function(data, doc_id_field, text_field,
-                                n_ngrams_min = 3, n_ngrams_max = 7,
-                                n_skip_words = 4, top_num = 1000) {
+                                n_ngrams_min = 3L, n_ngrams_max = 7L,
+                                n_skip_words = 4L, top_num = 1000L) {
   data_temp <- data %>%
     unnest_tokens(skipgrams, text, token = "skip_ngrams",
                   n_min = n_ngrams_min,
                   n = n_ngrams_max,
                   k = n_skip_words) %>%
-    mutate(num_words = str_count(skipgrams, "[\\w]+[[:punct:]]*[\\w]*")) %>%
+    mutate(skipgrams = tolower(skipgrams),
+           num_words = str_count(skipgrams, "[\\w]+[[:punct:]]*[\\w]*")) %>%
     group_by({{ doc_id_field }}, num_words) %>%
     mutate(skipgrams_in_tweet = n()) %>%
     ungroup()
@@ -441,7 +790,8 @@ feature_skip_ngrams <- function(data, doc_id_field, text_field,
     mutate(skipgram_proportion = n / skipgrams_in_tweet,
            skipgrams = paste0("skipgram_", num_words, "_", skipgrams)) %>%
     select(-c("skipgrams_in_tweet", "n", "num_words")) %>%
-    spread(skipgrams, skipgram_proportion)
+    pivot_wider(names_from = skipgrams, values_from = skipgram_proportion,
+                values_fill = 0)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -451,27 +801,66 @@ feature_skip_ngrams <- function(data, doc_id_field, text_field,
   return(data)
 }
 
-feature_wordcors <- function(data, doc_id_field, text_field, top_num = 1000) {
-  data_temp <- data %>%
-    unnest_tokens(word, {{ text_field }},
-                  token = "tweets", to_lower = FALSE,
-                  strip_punct = TRUE) %>%
-    mutate(word = tolower(word)) %>%
-    filter(!(word %in% stopwords::stopwords("en")))
-
-  top50percent <- data_temp %>%
-    count(word, sort = TRUE) %>%
-    filter(n > mean(n)) %>%
-    pull(word)
-
-  data_temp <- data_temp %>%
-    filter(word %in% top50percent) %>%
-    pairwise_cor(word, {{ doc_id_field }}, sort = TRUE) %>%
-    top_n(top_num, correlation) %>%
-    filter(row_number() %% 2 == 1) %>%
-    transmute(search_pairs = paste(item1, item2, collapse = "|"))
-  data <- data %>%
-    mutate(count = sum(str_count({{ text_field }}, data_temp$search_pairs)))
-  return(data)
-
-}
+#' #' Word correlation features
+#' #'
+#' #' Engineers features related to word correlations in Tweets.
+#' #'
+#' #' @return A data frame of document ids their associated word correlation features
+#' #' @details Tweets are first converted to lowercase before the features are
+#' #'   calculated. The top 50% of words used in all
+#' #'   Tweets are then retained.
+#' #'
+#' #'   The word correlation features are calculated as a proportion of the total number of
+#' #'   bigrams in the Tweet:
+#' #'
+#' #'   \itemize{
+#' #'     \item{the number of the top_num word pairs occurrences}
+#' #'   }
+#' #'
+#' #' @inheritParams feature_hashtags
+#' #' @param top_num integer, the top n word correlations to create features from
+#' #' @examples
+#' #' tweets <- data.frame(status_id = c(1234, 5678),
+#' #'                      text = c("I tweet about one thing #onething #things",
+#' #'                               "I tweet about another #anotherthing
+#' #'                                #things"),
+#' #'                      stringsAsFactors = FALSE)
+#' #' feature_wordcors(tweets, status_id, text)
+#' #' @import dplyr
+#' #' @importFrom tidytext unnest_tokens
+#' #' @importFrom tidyr pivot_wider
+#' #' @importFrom rlang quo_text
+#' #' @importFrom widyr pairwise_cor
+#' #' @export
+#' feature_wordcors <- function(data, doc_id_field, text_field, top_num = 1000) {
+#'   tweet_ngrams <- data %>%
+#'     unnest_tokens(ngram, {{ text_field }}, token = "ngrams", n = 2) %>%
+#'     group_by({{ doc_id_field }}) %>%
+#'     summarise(ngrams_in_tweet = n()) %>%
+#'     select({{ doc_id_field }}, ngrams_in_tweet)
+#'
+#'   data_temp <- data %>%
+#'     unnest_tokens(word, {{ text_field }},
+#'                   token = "tweets", to_lower = FALSE,
+#'                   strip_punct = TRUE) %>%
+#'     mutate(word = tolower(word)) #%>%
+#'     # filter(!(word %in% stopwords::stopwords("en")))
+#'
+#'
+#'
+#'   top50percent <- data_temp %>%
+#'     count(word, sort = TRUE) %>%
+#'     filter(n > mean(n)) %>%
+#'     pull(word)
+#'
+#'   data_temp <- data_temp %>%
+#'     filter(word %in% top50percent) %>%
+#'     pairwise_cor(word, {{ doc_id_field }}, sort = TRUE) %>%
+#'     top_n(top_num, correlation) %>%
+#'     filter(row_number() %% 2 == 1) %>%
+#'     transmute(search_pairs = paste(item1, item2, collapse = "|"))
+#'   data <- data %>%
+#'     mutate(count = sum(str_count({{ text_field }}, data_temp$search_pairs)))
+#'   return(data)
+#'
+#' }
