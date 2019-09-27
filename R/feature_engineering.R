@@ -51,12 +51,25 @@ feature_hashtags <- function(data, doc_id_field, text_field, top_num = 100L, min
     mutate(word = gsub("^#", "", word)) %>%
     inner_join(lexicon_nrc(), by = "word") %>%
     filter(sentiment %in% c("positive", "negative")) %>%
-    count({{ doc_id_field }}, total_words_in_tweet, sentiment) %>%
-    pivot_wider(names_from = sentiment, values_from = n,
-                values_fill = 0) %>%
-    mutate(nrc_pos_hash = positive / total_words_in_tweet,
-           nrc_neg_hash = negative / total_words_in_tweet) %>%
-    select({{ doc_id_field }}, nrc_pos_hash, nrc_neg_hash)
+    count({{ doc_id_field }}, total_words_in_tweet, sentiment)
+  if (nrow(nrc_pos_neg_hashtags) > 0) {
+    nrc_pos_neg_hashtags <- nrc_pos_neg_hashtags %>%
+      pivot_wider(names_from = sentiment, values_from = n)
+      missing_fields <- setdiff(c("positive", "negative"),
+                                names(nrc_pos_neg_hashtags)) # check if either positive of negative are missing
+      if (length(missing_fields) > 0) nrc_pos_neg_hashtags[missing_fields] <- 0 # Add them, filled with '0's
+    nrc_pos_neg_hashtags <- nrc_pos_neg_hashtags %>%
+      mutate(nrc_pos_hash = positive / total_words_in_tweet,
+             nrc_neg_hash = negative / total_words_in_tweet) %>%
+      select({{ doc_id_field }}, nrc_pos_hash, nrc_neg_hash)
+  } else {
+    nrc_pos_neg_hashtags <- data %>%
+      select({{ doc_id_field }}) %>%
+      filter(is.null({{ doc_id_field }})) %>%
+      mutate(nrc_pos_hash = numeric(),
+             nrc_neg_hash = numeric())
+  }
+
 
   # nrc lexicon - pos/neg groupings for hashtags
   nrc_groupings <- data.frame(sentiment = c("anger", "disgust", "fear", "negative", "sadness",
@@ -67,12 +80,28 @@ feature_hashtags <- function(data, doc_id_field, text_field, top_num = 100L, min
     mutate(word = gsub("^#", "", word)) %>%
     inner_join(lexicon_nrc(), by = "word") %>%
     left_join(nrc_groupings, by = "sentiment") %>%
-    count({{ doc_id_field }}, total_words_in_tweet, grouping) %>%
-    pivot_wider(names_from = grouping, values_from = n,
-                values_fill = 0) %>%
-    mutate(nrc_pos_hash_group = pos_group / total_words_in_tweet,
-           nrc_neg_hash_group = neg_group / total_words_in_tweet) %>%
-    select({{ doc_id_field }}, nrc_pos_hash_group, nrc_neg_hash_group)
+    count({{ doc_id_field }}, total_words_in_tweet, grouping)
+
+  if (nrow(nrc_pos_neg_group) > 0) {
+
+    nrc_pos_neg_group <- nrc_pos_neg_group %>%
+      pivot_wider(names_from = grouping, values_from = n)
+    missing_fields <- setdiff(c("pos_group", "neg_group"),
+                              names(nrc_pos_neg_group)) # check if either positive of negative are missing
+    if (length(missing_fields) > 0) nrc_pos_neg_group[missing_fields] <- 0 # Add them, filled with '0's
+    nrc_pos_neg_group <- nrc_pos_neg_group %>%
+      mutate(nrc_pos_hash_group = pos_group / total_words_in_tweet,
+             nrc_neg_hash_group = neg_group / total_words_in_tweet) %>%
+      select({{ doc_id_field }}, nrc_pos_hash_group, nrc_neg_hash_group)
+
+  } else {
+    nrc_pos_neg_group <- data %>%
+      select({{ doc_id_field }}) %>%
+      filter(is.null({{ doc_id_field }})) %>%
+      mutate(nrc_pos_hash_group = numeric(),
+             nrc_neg_hash_group = numeric())
+  }
+
 
   # top x tweets
   out <- out %>%
@@ -90,8 +119,7 @@ feature_hashtags <- function(data, doc_id_field, text_field, top_num = 100L, min
     count({{ doc_id_field }}, total_words_in_tweet, word) %>%
     mutate(frequency_of_hashtag = n / total_words_in_tweet) %>%
     select(-c(n, total_words_in_tweet)) %>%
-    pivot_wider(names_from = word, values_from = frequency_of_hashtag,
-                values_fill = 0)
+    pivot_wider(names_from = word, values_from = frequency_of_hashtag)
   data <- data %>%
     select({{ doc_id_field }}) %>%
     left_join(out, by = rlang::quo_text(enquo(doc_id_field))) %>%
