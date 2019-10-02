@@ -240,7 +240,6 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
 
   if ("MPQA" %in% sentiments) {
     # downloaded from https://mpqa.cs.pitt.edu/lexicons/
-    # mpqa_groupings <- twitterfeatures:::mpqa_groupings
     mpqa_pos_neg_group <- out %>%
       inner_join(mpqa_groupings, by = "word") %>%
       count({{ doc_id_field }}, total_words_in_tweet, grouping)
@@ -322,8 +321,8 @@ feature_quantitative <- function(data, doc_id_field, text_field) {
               ave_words_in_sentence = mean(num_words))
   out <- characters %>%
     left_join(words, by = rlang::quo_text(enquo(doc_id_field))) %>%
-    left_join(sentences, by = rlang::quo_text(enquo(doc_id_field))) %>%
-    return()
+    left_join(sentences, by = rlang::quo_text(enquo(doc_id_field)))
+  return(out)
 }
 
 #' Emoji features

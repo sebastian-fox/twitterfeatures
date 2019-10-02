@@ -11,14 +11,15 @@ excited_tweet <- data.frame(status_id = c(1234, 5678),
 
 
 
-test_that("hashtag dimensions are expected", {
+expected_dimensions <- c(2L, 7L)
+test_that("sentiment dimensions are expected", {
   expect_equal(dim(feature_sentiment(plain_tweet, status_id, text)),
-               c(2L, 7L))
+               expected_dimensions)
   expect_equal(dim(feature_sentiment(excited_tweet, status_id, text)),
-               c(2L, 7L))
+               expected_dimensions)
 })
 
-test_that("hashtag function doesn't return NAs", {
+test_that("sentiment function doesn't return NAs", {
   expect_equal(sum(is.na(feature_sentiment(plain_tweet, status_id, text))),
                0)
   expect_equal(sum(is.na(feature_sentiment(excited_tweet, status_id, text))),

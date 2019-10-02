@@ -16,13 +16,14 @@ tweets_no_hash <- data.frame(status_id = c(1234, 5678),
 
 
 
+expected_dimensions <- c(2L, 6L)
 test_that("hashtag dimensions are expected", {
   expect_equal(dim(feature_hashtags(tweets, status_id, text)),
-               c(2L, 6L))
+               expected_dimensions)
   expect_equal(dim(feature_hashtags(tweets_one_neg_hash, status_id, text)),
-               c(2L, 6L))
+               expected_dimensions)
   expect_equal(dim(feature_hashtags(tweets_no_hash, status_id, text)),
-               c(2L, 6L))
+               expected_dimensions)
 })
 
 test_that("hashtag function doesn't return NAs", {
