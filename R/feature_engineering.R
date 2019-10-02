@@ -184,12 +184,27 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
     nrc_pos_neg_group <- out %>%
       inner_join(lexicon_nrc(), by = "word") %>%
       left_join(nrc_groupings, by = "sentiment") %>%
-      count({{ doc_id_field }}, total_words_in_tweet, grouping) %>%
-      pivot_wider(names_from = grouping, values_from = n,
-                  values_fill = 0) %>%
-      mutate(nrc_pos_word_group = pos_group / total_words_in_tweet,
-             nrc_neg_word_group = neg_group / total_words_in_tweet) %>%
-      select({{ doc_id_field }}, nrc_pos_word_group, nrc_neg_word_group)
+      count({{ doc_id_field }}, total_words_in_tweet, grouping)
+
+    if (nrow(nrc_pos_neg_group) > 0) {
+
+      nrc_pos_neg_group <- nrc_pos_neg_group %>%
+        pivot_wider(names_from = grouping, values_from = n)
+      missing_fields <- setdiff(c("pos_group", "neg_group"),
+                                names(nrc_pos_neg_group)) # check if either positive of negative are missing
+      if (length(missing_fields) > 0) nrc_pos_neg_group[missing_fields] <- 0 # Add them, filled with '0's
+      nrc_pos_neg_group <- nrc_pos_neg_group %>%
+        mutate(nrc_pos_word_group = pos_group / total_words_in_tweet,
+               nrc_neg_word_group = neg_group / total_words_in_tweet) %>%
+        select({{ doc_id_field }}, nrc_pos_word_group, nrc_neg_word_group)
+
+    } else {
+      nrc_pos_neg_group <- data %>%
+        select({{ doc_id_field }}) %>%
+        filter(is.null({{ doc_id_field }})) %>%
+        mutate(nrc_pos_word_group = numeric(),
+               nrc_neg_word_group = numeric())
+    }
     doc_ids <- doc_ids %>%
       left_join(nrc_pos_neg_group, by = rlang::quo_text(enquo(doc_id_field)))
   }
@@ -197,14 +212,30 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
   if ("Bing-Liu" %in% sentiments) {
     bing_pos_neg_group <- out %>%
       inner_join(lexicon_bing(), by = "word") %>%
-      count({{ doc_id_field }}, total_words_in_tweet, sentiment) %>%
-      pivot_wider(names_from = sentiment, values_from = n,
-                  values_fill = 0) %>%
-      mutate(bingliu_pos_word = positive / total_words_in_tweet,
-             bingliu_neg_word = negative / total_words_in_tweet) %>%
-      select({{ doc_id_field }}, bingliu_pos_word, bingliu_neg_word)
+      count({{ doc_id_field }}, total_words_in_tweet, sentiment)
+
+    if (nrow(bing_pos_neg_group) > 0) {
+
+      bing_pos_neg_group <- bing_pos_neg_group %>%
+        pivot_wider(names_from = sentiment, values_from = n)
+      missing_fields <- setdiff(c("positive", "negative"),
+                                names(bing_pos_neg_group)) # check if either positive of negative are missing
+      if (length(missing_fields) > 0) bing_pos_neg_group[missing_fields] <- 0 # Add them, filled with '0's
+      bing_pos_neg_group <- bing_pos_neg_group %>%
+        mutate(bingliu_pos_word = positive / total_words_in_tweet,
+               bingliu_neg_word = negative / total_words_in_tweet) %>%
+        select({{ doc_id_field }}, bingliu_pos_word, bingliu_neg_word)
+
+    } else {
+      bing_pos_neg_group <- data %>%
+        select({{ doc_id_field }}) %>%
+        filter(is.null({{ doc_id_field }})) %>%
+        mutate(bingliu_pos_word = numeric(),
+               bingliu_neg_word = numeric())
+    }
     doc_ids <- doc_ids %>%
       left_join(bing_pos_neg_group, by = rlang::quo_text(enquo(doc_id_field)))
+
   }
 
   if ("MPQA" %in% sentiments) {
@@ -212,12 +243,26 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
     # mpqa_groupings <- twitterfeatures:::mpqa_groupings
     mpqa_pos_neg_group <- out %>%
       inner_join(mpqa_groupings, by = "word") %>%
-      count({{ doc_id_field }}, total_words_in_tweet, grouping) %>%
-      pivot_wider(names_from = grouping, values_from = n,
-                  values_fill = 0) %>%
-      mutate(mpqa_pos_word_group = positive / total_words_in_tweet,
-             mpqa_neg_word_group = negative / total_words_in_tweet) %>%
-      select({{ doc_id_field }}, mpqa_pos_word_group, mpqa_neg_word_group)
+      count({{ doc_id_field }}, total_words_in_tweet, grouping)
+    if (nrow(mpqa_pos_neg_group) > 0) {
+
+      mpqa_pos_neg_group <- mpqa_pos_neg_group %>%
+        pivot_wider(names_from = grouping, values_from = n)
+      missing_fields <- setdiff(c("positive", "negative"),
+                                names(mpqa_pos_neg_group)) # check if either positive of negative are missing
+      if (length(missing_fields) > 0) mpqa_pos_neg_group[missing_fields] <- 0 # Add them, filled with '0's
+      mpqa_pos_neg_group <- mpqa_pos_neg_group %>%
+        mutate(mpqa_pos_word_group = positive / total_words_in_tweet,
+               mpqa_neg_word_group = negative / total_words_in_tweet) %>%
+        select({{ doc_id_field }}, mpqa_pos_word_group, mpqa_neg_word_group)
+
+    } else {
+      mpqa_pos_neg_group <- data %>%
+        select({{ doc_id_field }}) %>%
+        filter(is.null({{ doc_id_field }})) %>%
+        mutate(mpqa_pos_word_group = numeric(),
+               mpqa_neg_word_group = numeric())
+    }
     doc_ids <- doc_ids %>%
       left_join(mpqa_pos_neg_group, by = rlang::quo_text(enquo(doc_id_field)))
   }
