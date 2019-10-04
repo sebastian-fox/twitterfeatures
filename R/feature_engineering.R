@@ -457,8 +457,12 @@ feature_emoji <- function(data, doc_id_field, text_field, top_num = 20) {
 #' @export
 feature_orthographic <- function(data, doc_id_field, text_field) {
   out <- data %>%
-    mutate(num_characters = nchar({{ text_field }}),
-           punctuation = gsub("@\\w+ *", "", {{ text_field }}),
+    select({{ doc_id_field }}, {{ text_field }}) %>%
+    mutate(dummy = stri_escape_unicode({{ text_field }}),
+           dummy = gsub("\\\\U.\\w+", "X", dummy),
+           num_characters = nchar(dummy)) %>%
+    select({{ doc_id_field }}, {{ text_field }}, num_characters) %>%
+    mutate(punctuation = gsub("@\\w+ *", "", {{ text_field }}),
            punctuation = gsub("#\\w+ *", "", punctuation),
            punctuation = gsub("\\|", "", punctuation),
            punctuation = gsub("[^[:punct:]+]", "", punctuation)) %>%
@@ -468,9 +472,16 @@ feature_orthographic <- function(data, doc_id_field, text_field) {
     count({{ doc_id_field }}, character, num_characters) %>%
     mutate(punct_per_character = n / num_characters,
            character = paste("punc", character, sep = "_")) %>%
-    select(-n, -num_characters) %>%
-    pivot_wider(names_from = character, values_from = punct_per_character,
-                values_fill = 0)
+    select(-n, -num_characters)
+
+  if (nrow(out) > 0) {
+    out <- out %>%
+      pivot_wider(names_from = character, values_from = punct_per_character)
+  } else {
+    out <- data %>%
+      select({{ doc_id_field }})
+  }
+
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
