@@ -639,9 +639,15 @@ feature_stopwords <- function(data, doc_id_field, text_field, top_num = 10) {
     mutate(stopwords_proportion = num_stopwords / total_words_in_tweet,
            stopword_proportion = n / total_words_in_tweet,
            word = paste0("stopword_", word)) %>%
-    select(-c("total_words_in_tweet", "num_stopwords", "n")) %>%
-    pivot_wider(names_from = word, values_from = stopword_proportion,
-                values_fill = 0)
+    select(-c("total_words_in_tweet", "num_stopwords", "n"))
+  if (nrow(data_temp) > 0) {
+    data_temp <- data_temp %>%
+      pivot_wider(names_from = word, values_from = stopword_proportion)
+  } else {
+    data_temp <- data %>%
+      select({{ doc_id_field }}) %>%
+      mutate(stopwords_proportion = 0L)
+  }
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -736,9 +742,15 @@ feature_slang <- function(data, doc_id_field, text_field, top_num = 10) {
     mutate(slangwords_proportion = num_slang / total_words_in_tweet,
            slang_proportion = n / total_words_in_tweet,
            word = paste0("slang_", word)) %>%
-    select(-c("total_words_in_tweet", "num_slang", "n")) %>%
-    pivot_wider(names_from = word, values_from = slang_proportion,
-                values_fill = 0)
+    select(-c("total_words_in_tweet", "num_slang", "n"))
+
+  if (nrow(data_temp) > 0) {
+    data_temp <- data_temp %>%
+      pivot_wider(names_from = word, values_from = slang_proportion)
+  } else {
+    data_temp <- data %>%
+      select({{ doc_id_field }})
+  }
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -837,9 +849,15 @@ feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ng
       mutate(ngram = stri_escape_unicode(ngram),
              ngram = gsub("\\\\", "\\", ngram))
   }
-  data_temp <- data_temp %>%
-    pivot_wider(names_from = ngram, values_from = ngram_proportion,
-                values_fill = 0)
+
+  if (nrow(data_temp) > 0) {
+    data_temp <- data_temp %>%
+      pivot_wider(names_from = ngram, values_from = ngram_proportion)
+  } else {
+    data_temp <- data %>%
+      select({{ doc_id_field }})
+  }
+
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
@@ -906,9 +924,15 @@ feature_skip_ngrams <- function(data, doc_id_field, text_field,
     count({{ doc_id_field }}, skipgrams_in_tweet, skipgrams, num_words) %>%
     mutate(skipgram_proportion = n / skipgrams_in_tweet,
            skipgrams = paste0("skipgram_", num_words, "_", skipgrams)) %>%
-    select(-c("skipgrams_in_tweet", "n", "num_words")) %>%
-    pivot_wider(names_from = skipgrams, values_from = skipgram_proportion,
-                values_fill = 0)
+    select(-c("skipgrams_in_tweet", "n", "num_words"))
+
+  if (nrow(data_temp) > 0) {
+    data_temp <- data_temp %>%
+      pivot_wider(names_from = skipgrams, values_from = skipgram_proportion)
+  } else {
+    data_temp <- data %>%
+      select({{ doc_id_field }})
+  }
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%

@@ -10,12 +10,12 @@ boring_tweet <- data.frame(status_id = 123,
   feature_orthographic(status_id, text)
 
 
-test_that("sentiment dimensions are expected", {
+test_that("orthographic dimensions are expected", {
   expect_equal(dim(tweets), c(2L, 5L))
   expect_equal(dim(boring_tweet), c(1L, 1L))
 })
 
-test_that("sentiment function doesn't return NAs", {
+test_that("orthographic function doesn't return NAs", {
   expect_equal(sum(is.na(tweets)),0)
   expect_equal(sum(is.na(boring_tweet)), 0)
 })

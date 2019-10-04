@@ -14,14 +14,14 @@ plain_tweet1 <- feature_longwords(tweet, status_id, text, top_num = 1)
 
 shrt_tweet <- feature_longwords(short_wrd_tweets, status_id, text)
 
-test_that("sentiment dimensions are expected", {
+test_that("longword dimensions are expected", {
   expect_equal(dim(plain_tweet), c(2L, 4L))
   expect_equal(dim(plain_tweet1), c(2L, 3L))
   expect_equal(dim(shrt_tweet), c(2L, 2L))
 
 })
 
-test_that("sentiment function doesn't return NAs", {
+test_that("longword function doesn't return NAs", {
   expect_equal(sum(is.na(plain_tweet)), 0)
   expect_equal(sum(is.na(plain_tweet1)), 0)
   expect_equal(sum(is.na(shrt_tweet)), 0)

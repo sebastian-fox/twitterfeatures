@@ -41,7 +41,7 @@ test_that("emoji dimensions are expected", {
 
 
 
-test_that("sentiment function doesn't return NAs", {
+test_that("emoji function doesn't return NAs", {
   expect_equal(sum(is.na(tweets_emo)), 0)
   expect_equal(sum(is.na(tweets_no_emo)), 0)
   expect_equal(sum(is.na(tweet_emo)), 0)
