@@ -524,6 +524,7 @@ feature_orthographic <- function(data, doc_id_field, text_field) {
 #' @importFrom tidyr pivot_wider
 #' @importFrom qdapRegex rm_twitter_url
 #' @importFrom rlang quo_name
+#' @importFrom stringr str_replace_all
 #' @export
 feature_longwords <- function(data, doc_id_field, text_field, top_num = 10, remove_urls = TRUE) {
   if (remove_urls) {
@@ -568,9 +569,16 @@ feature_longwords <- function(data, doc_id_field, text_field, top_num = 10, remo
     count(status_id, total_words_in_tweet, word) %>%
     mutate(prop_word_in_tweet = n / total_words_in_tweet,
            word = paste0("long_", word)) %>%
-    select(-c("total_words_in_tweet", "n")) %>%
-    pivot_wider(names_from = word, values_from = prop_word_in_tweet,
-                values_fill = 0)
+    select(-c("total_words_in_tweet", "n"))
+
+  if (nrow(long_words) > 0) {
+    long_words <- long_words %>%
+      pivot_wider(names_from = word, values_from = prop_word_in_tweet)
+  } else {
+    long_words <- data %>%
+      dplyr::select({{ doc_id_field }})
+  }
+
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
