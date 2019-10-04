@@ -298,10 +298,14 @@ feature_sentiment <- function(data, doc_id_field, text_field, sentiments = c("nr
 #' @importFrom tidytext unnest_tokens
 #' @importFrom rlang quo_text
 #' @importFrom stringr str_count
+#' @importFrom stringi stri_escape_unicode
 #' @export
 feature_quantitative <- function(data, doc_id_field, text_field) {
   characters <- data %>%
-    mutate(num_characters = nchar({{ text_field }})) %>%
+    select({{ doc_id_field }}, {{ text_field }}) %>%
+    mutate(dummy = stri_escape_unicode({{ text_field }}),
+           dummy = gsub("\\\\U.\\w+", "X", dummy),
+           num_characters = nchar(dummy)) %>%
     select({{ doc_id_field }}, num_characters)
   words <- data %>%
     unnest_tokens(word, {{ text_field }},
@@ -345,8 +349,8 @@ feature_quantitative <- function(data, doc_id_field, text_field) {
 #' @param top_num integer, the top n emojis to create features from
 #' @examples
 #' tweets <- data.frame(status_id = c(1234, 5678),
-#'                      text = c("I tweet about one thing #onething #things",
-#'                               "I tweet about another thing #another thing #things"),
+#'                      text = c("I tweet about one thing \U0001f602 #onething #things \U0001f600",
+#'                               "I tweet about another thing \U0001f602 #another thing #things"),
 #'                      stringsAsFactors = FALSE)
 #' feature_emoji(tweets, status_id, text)
 #' @import dplyr
@@ -383,6 +387,21 @@ feature_emoji <- function(data, doc_id_field, text_field, top_num = 20) {
                   strip_punct = TRUE) %>%
     count({{ doc_id_field }}, name = "total_words_in_tweet")
 
+  # count the number of letters in a tweet
+  letter_count <- data %>%
+    mutate(!!quo_name(text_field) := stri_escape_unicode(.data[[!!quo_name(text_field)]]),
+           !!quo_name(text_field) := gsub("\\\\U.\\w+", "X", .data[[!!quo_name(text_field)]]),
+           total_characters = nchar(.data[[!!quo_name(text_field)]])) %>%
+    select({{ doc_id_field }}, total_characters)
+
+  # calculate the number of emojis per letter
+  emoji_per_character <- emoji_count %>%
+    group_by({{ doc_id_field }}) %>%
+    summarise(total_emojis = sum(n)) %>%
+    left_join(letter_count, by = rlang::quo_text(enquo(doc_id_field))) %>%
+    mutate(emoji_per_character = total_emojis / total_characters) %>%
+    select({{ doc_id_field }}, emoji_per_character)
+
   emoji_count <- emoji_count %>%
     inner_join(word_count, by = rlang::quo_text(enquo(doc_id_field))) %>%
     filter(emoji %in% top_n_emojis$emoji) %>%
@@ -390,13 +409,20 @@ feature_emoji <- function(data, doc_id_field, text_field, top_num = 20) {
     dplyr::select({{ doc_id_field }}, emoji, emoji_per_word) %>%
     mutate(emoji = paste0("u", emoji)) %>%
     group_by({{ doc_id_field }}, emoji) %>%
-    summarise(emoji_per_word = sum(emoji_per_word)) %>%
-    pivot_wider(names_from = emoji, values_from = emoji_per_word,
-                values_fill = 0)
+    summarise(emoji_per_word = sum(emoji_per_word))
+  if (nrow(emoji_count) > 0) {
+    emoji_count <- emoji_count %>%
+      pivot_wider(names_from = emoji, values_from = emoji_per_word)
+  } else {
+    emoji_count <- data %>%
+      select({{ doc_id_field }})
+  }
+
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%
-    left_join(emoji_count, by = rlang::quo_text(enquo(doc_id_field)))
+    left_join(emoji_count, by = rlang::quo_text(enquo(doc_id_field))) %>%
+    left_join(emoji_per_character, by = rlang::quo_text(enquo(doc_id_field)))
 
   data[is.na(data)] <- 0
   return(data)

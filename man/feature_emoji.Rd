@@ -37,8 +37,8 @@ The full list of emojis are initially downloaded from
 }
 \examples{
 tweets <- data.frame(status_id = c(1234, 5678),
-                     text = c("I tweet about one thing #onething #things",
-                              "I tweet about another thing #another thing #things"),
+                     text = c("I tweet about one thing \\U0001f602 #onething #things \\U0001f600",
+                              "I tweet about another thing \\U0001f602 #another thing #things"),
                      stringsAsFactors = FALSE)
 feature_emoji(tweets, status_id, text)
 }
