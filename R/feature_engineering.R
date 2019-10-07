@@ -749,7 +749,7 @@ feature_slang <- function(data, doc_id_field, text_field, top_num = 10) {
 #'
 #' @inheritParams feature_hashtags
 #' @param type string; either ngrams of character_shingles
-#' @param n_ngrams ingeger; the number in the ngram
+#' @param n_ngrams integer; the number in the ngram
 #' @param top_num integer, the top n ngrams to create features from
 #' @examples
 #' tweets <- data.frame(status_id = c(1234, 5678),
@@ -763,11 +763,18 @@ feature_slang <- function(data, doc_id_field, text_field, top_num = 10) {
 #' @importFrom tidyr pivot_wider
 #' @importFrom rlang quo_text
 #' @importFrom stringi stri_escape_unicode
+#' @importFrom stringr str_replace_all str_count
 #' @export
 feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ngrams = 1L, top_num = 1000L) {
   if (!type %in% c("ngrams", "character_shingles")) stop("type must be either ngram or character_shingles")
   data_temp <- data %>%
-    unnest_tokens(ngram, {{ text_field }}, token = type, n = n_ngrams) %>%
+    select({{ doc_id_field }}, {{ text_field }}) %>%
+    mutate(new_dummy_text_field = str_replace_all({{ text_field }}, "(?<=^|\\s)@[^\\s]+", ""),
+           new_dummy_text_field = str_replace_all(new_dummy_text_field, "(?<=^|\\s)http[^\\s]+", ""),
+           new_dummy_text_field = str_replace_all(new_dummy_text_field, "(?<=^|\\s)t\\.co[^\\s]+", "")) %>%
+    filter(str_count(new_dummy_text_field, "\\w+") >= n_ngrams) %>%
+    select(- {{ text_field }}) %>%
+    unnest_tokens(ngram, new_dummy_text_field, token = type, n = n_ngrams) %>%
     group_by({{ doc_id_field }}) %>%
     mutate(ngrams_in_tweet = n(),
            ngram = tolower(ngram)) %>%

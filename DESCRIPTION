@@ -10,6 +10,7 @@ Description: When attempting machine learning on Twitter data a typical task is 
     standardises methods of creating those features.
 Imports:
     dplyr,
+    lexicon,
     qdapRegex,
     rlang,
     stopwords,

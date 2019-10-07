@@ -18,7 +18,7 @@ contains the text of the Tweet}
 
 \item{type}{string; either ngrams of character_shingles}
 
-\item{n_ngrams}{ingeger; the number in the ngram}
+\item{n_ngrams}{integer; the number in the ngram}
 
 \item{top_num}{integer, the top n ngrams to create features from}
 }

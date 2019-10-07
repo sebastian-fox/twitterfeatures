@@ -54,4 +54,7 @@ globalVariables(c(":=",
                   "total_words_in_tweet",
                   "unicode",
                   "word",
-                  "word_length"))
+                  "word_length",
+                  "dummy",
+                  "total_characters",
+                  "total_emojis"))
