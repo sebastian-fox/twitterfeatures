@@ -4,8 +4,8 @@
 \alias{feature_skip_ngrams}
 \title{Skip ngram features}
 \usage{
-feature_skip_ngrams(data, doc_id_field, text_field, n_ngrams_min = 3L,
-  n_ngrams_max = 7L, n_skip_words = 4L, top_num = 1000L)
+feature_skip_ngrams(data, doc_id_field, text_field, n_ngrams_min = 2L,
+  n_ngrams_max = 4L, n_skip_words = 3L, top_num = 1000L)
 }
 \arguments{
 \item{data}{a dataframe or tibble containing the text data and document id}

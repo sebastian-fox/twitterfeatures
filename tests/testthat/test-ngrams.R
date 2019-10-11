@@ -25,7 +25,7 @@ test_that("ngram dimensions are expected", {
   expect_equal(dim(unusual_tweet_df_nofeatures), c(3L, 1L))
 })
 
-test_that("gnram function doesn't return NAs", {
+test_that("ngram function doesn't return NAs", {
   expect_equal(sum(is.na(ngram_df_n1)), 0)
   expect_equal(sum(is.na(ngram_df_n3)), 0)
   expect_equal(sum(is.na(ngram_df_default)), 0)

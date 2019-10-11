@@ -738,7 +738,8 @@ feature_slang <- function(data, doc_id_field, text_field, top_num = 10) {
 #'
 #' @return A data frame of document ids their associated ngrams features
 #' @details Tweets are first converted to lowercase before the features are
-#'   calculated.
+#'   calculated. Then, urls are removed, as well as @@usernames. Finally,
+#'   Tweets with fewer words than n_ngrams will return 0.
 #'
 #'   The ngram features are calculated as a proportion of the total number of
 #'   ngrams in the Tweet:
@@ -847,8 +848,8 @@ feature_ngrams <- function(data, doc_id_field, text_field, type = "ngrams", n_ng
 #' @importFrom rlang quo_text
 #' @export
 feature_skip_ngrams <- function(data, doc_id_field, text_field,
-                                n_ngrams_min = 3L, n_ngrams_max = 7L,
-                                n_skip_words = 4L, top_num = 1000L) {
+                                n_ngrams_min = 2L, n_ngrams_max = 4L,
+                                n_skip_words = 3L, top_num = 1000L) {
   data_temp <- data %>%
     unnest_tokens(skipgrams, text, token = "skip_ngrams",
                   n_min = n_ngrams_min,

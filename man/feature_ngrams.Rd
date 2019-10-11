@@ -30,7 +30,8 @@ Engineers features related to ngrams (both word or character) in Tweets.
 }
 \details{
 Tweets are first converted to lowercase before the features are
-  calculated.
+  calculated. Then, urls are removed, as well as @usernames. Finally,
+  Tweets with fewer words than n_ngrams will return 0.
 
   The ngram features are calculated as a proportion of the total number of
   ngrams in the Tweet:

@@ -57,4 +57,5 @@ globalVariables(c(":=",
                   "word_length",
                   "dummy",
                   "total_characters",
-                  "total_emojis"))
+                  "total_emojis",
+                  "new_dummy_text_field"))
