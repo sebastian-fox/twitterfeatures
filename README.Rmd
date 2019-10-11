@@ -21,28 +21,27 @@ knitr::opts_chunk$set(
 [![Coveralls test coverage](https://coveralls.io/repos/github/sebastian-fox/twitterfeatures/badge.svg)](https://coveralls.io/r/sebastian-fox/twitterfeatures?branch=master)
 <!-- badges: end -->
 
-The goal of twitterfeatures is to ...
+The goal of twitterfeatures is to make it easy to engineer simple features out of Twitter Content.
 
 ## Installation
 
-You can install the released version of twitterfeatures from [CRAN](https://CRAN.R-project.org) with:
+You can install the development version from [GitHub](https://github.com/) with:
 
 ``` r
-install.packages("twitterfeatures")
-```
-
-And the development version from [GitHub](https://github.com/) with:
-
-``` r
-# install.packages("devtools")
-devtools::install_github("sebastian-fox/twitterfeatures")
+# install.packages("remotes")
+remotes::install_github("sebastian-fox/twitterfeatures")
 ```
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+This is a basic example. It shows how to create sentiment features from the Tweets using 3 different sentiment dictionaries.
 
 ```{r example}
 library(twitterfeatures)
-## basic example code
+tweet <- data.frame(status_id = c(1234, 5678),
+                    text = c("Everything is great, happy and fantastic",
+                             "Bored, sad, tired, grumpy"),
+                    stringsAsFactors = FALSE)
+
+feature_sentiment(tweet, status_id, text)
 ```
 
