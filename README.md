@@ -7,6 +7,8 @@
 
 [![Travis build
 status](https://travis-ci.org/sebastian-fox/twitterfeatures.svg?branch=master)](https://travis-ci.org/sebastian-fox/twitterfeatures)
+[![Coveralls test
+coverage](https://coveralls.io/repos/github/sebastian-fox/twitterfeatures/badge.svg)](https://coveralls.io/r/sebastian-fox/twitterfeatures?branch=master)
 <!-- badges: end -->
 
 The goal of twitterfeatures is to …
