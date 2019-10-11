@@ -10,7 +10,7 @@ excited_tweet <- data.frame(status_id = c(1234, 5678),
 
 mixed_tweets <- data.frame(status_id = c(1234, 5678),
                            text = c("This is a tweet",
-                                    "This is a fantastic fun brilliant tweet"),
+                                    "This appreciate a fantastic brilliant tweet"),
                            stringsAsFactors = FALSE)
 
 
@@ -20,12 +20,16 @@ test_that("sentiment dimensions are expected", {
                expected_dimensions)
   expect_equal(dim(feature_sentiment(excited_tweet, status_id, text)),
                expected_dimensions)
+  expect_equal(dim(feature_sentiment(mixed_tweets, status_id, text)),
+               expected_dimensions)
 })
 
 test_that("sentiment function doesn't return NAs", {
   expect_equal(sum(is.na(feature_sentiment(plain_tweet, status_id, text))),
                0)
   expect_equal(sum(is.na(feature_sentiment(excited_tweet, status_id, text))),
+               0)
+  expect_equal(sum(is.na(feature_sentiment(mixed_tweets, status_id, text))),
                0)
 })
 

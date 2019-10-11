@@ -871,15 +871,8 @@ feature_skip_ngrams <- function(data, doc_id_field, text_field,
     count({{ doc_id_field }}, skipgrams_in_tweet, skipgrams, num_words) %>%
     mutate(skipgram_proportion = n / skipgrams_in_tweet,
            skipgrams = paste0("skipgram_", num_words, "_", skipgrams)) %>%
-    select(-c("skipgrams_in_tweet", "n", "num_words"))
-
-  if (nrow(data_temp) > 0) {
-    data_temp <- data_temp %>%
-      pivot_wider(names_from = skipgrams, values_from = skipgram_proportion)
-  } else {
-    data_temp <- data %>%
-      select({{ doc_id_field }})
-  }
+    select(-c("skipgrams_in_tweet", "n", "num_words")) %>%
+    pivot_wider(names_from = skipgrams, values_from = skipgram_proportion)
 
   data <- data %>%
     dplyr::select({{ doc_id_field }}) %>%

@@ -10,6 +10,8 @@ unusual_tweets <- data.frame(status_id = c(1234, 345, 5435, 6543),
                              stringsAsFactors = FALSE)
 
 ngram_df_n1 <- feature_ngrams(tweets, status_id, text, n_ngram = 1, top_num = 3)
+ngram_df_n1_cs <- feature_ngrams(tweets, status_id, text, n_ngram = 1, top_num = 3,
+                                 type = "character_shingles")
 ngram_df_n3 <- feature_ngrams(tweets, status_id, text, n_ngram = 3, top_num = 1)
 ngram_df_default <- feature_ngrams(tweets, status_id, text)
 
@@ -19,6 +21,7 @@ unusual_tweet_df_nofeatures <- feature_ngrams(unusual_tweets[unusual_tweets$stat
 
 test_that("ngram dimensions are expected", {
   expect_equal(dim(ngram_df_n1), c(2L, 4L))
+  expect_equal(dim(ngram_df_n1_cs), c(2L, 4L))
   expect_equal(dim(ngram_df_n3), c(2L, 2L))
   expect_equal(dim(ngram_df_default), c(2L, 10L))
   expect_equal(dim(unusual_tweet_df), c(4L, 4L))
@@ -27,8 +30,15 @@ test_that("ngram dimensions are expected", {
 
 test_that("ngram function doesn't return NAs", {
   expect_equal(sum(is.na(ngram_df_n1)), 0)
+  expect_equal(sum(is.na(ngram_df_n1_cs)), 0)
   expect_equal(sum(is.na(ngram_df_n3)), 0)
   expect_equal(sum(is.na(ngram_df_default)), 0)
   expect_equal(sum(is.na(unusual_tweet_df)), 0)
   expect_equal(sum(is.na(unusual_tweet_df_nofeatures)), 0)
+})
+
+
+test_that("ngram errors work as expected", {
+  expect_error(feature_ngrams(tweets, status_id, text, type = "caracter_shingles"),
+               "type must be either ngram or character_shingles")
 })
