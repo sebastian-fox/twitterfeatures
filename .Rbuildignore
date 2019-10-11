@@ -3,3 +3,4 @@
 
 R/todo.R
 ^README\.Rmd$
+^\.travis\.yml$

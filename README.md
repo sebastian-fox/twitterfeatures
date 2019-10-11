@@ -5,6 +5,8 @@
 
 <!-- badges: start -->
 
+[![Travis build
+status](https://travis-ci.org/sebastian-fox/twitterfeatures.svg?branch=master)](https://travis-ci.org/sebastian-fox/twitterfeatures)
 <!-- badges: end -->
 
 The goal of twitterfeatures is to …
